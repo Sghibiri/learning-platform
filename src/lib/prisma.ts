@@ -8,8 +8,8 @@ const globalForPrisma = globalThis as unknown as {
 }
 
 function createPrismaClient() {
-  // Use direct TCP connection for local development
-  const connectionString = 'postgresql://postgres:postgres@localhost:51214/template1?sslmode=disable'
+  // Use DATABASE_URL from environment, fallback to local for development
+  const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/learning_platform'
 
   const pool = globalForPrisma.pool ?? new pg.Pool({ connectionString })
   const adapter = new PrismaPg(pool)

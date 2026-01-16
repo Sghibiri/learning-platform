@@ -3,8 +3,8 @@ import { PrismaClient } from '../src/generated/prisma'
 import { PrismaPg } from '@prisma/adapter-pg'
 import pg from 'pg'
 
-// Use direct TCP connection for seeding
-const connectionString = 'postgresql://postgres:postgres@localhost:51214/template1?sslmode=disable'
+// Use DATABASE_URL from environment or fallback to local
+const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/learning_platform'
 
 const pool = new pg.Pool({ connectionString })
 const adapter = new PrismaPg(pool)
