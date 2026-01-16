@@ -1,65 +1,141 @@
-import Image from "next/image";
+import Link from 'next/link'
+import { Header } from '@/components/layout/Header'
+import { Footer } from '@/components/layout/Footer'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { BookOpen, Brain, ClipboardCheck, Sparkles, ArrowRight } from 'lucide-react'
 
-export default function Home() {
+export default function HomePage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+    <div className="flex min-h-screen flex-col">
+      <Header />
+
+      <main className="flex-1">
+        {/* Hero Section */}
+        <section className="relative overflow-hidden bg-gradient-to-b from-primary/5 to-background py-20 md:py-32">
+          <div className="container relative z-10">
+            <div className="mx-auto max-w-3xl text-center">
+              <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
+                Learn Smarter,{' '}
+                <span className="text-primary">Not Harder</span>
+              </h1>
+              <p className="mt-6 text-lg text-muted-foreground md:text-xl">
+                Access interactive courses, flashcards, and tests designed to help
+                you master any subject. Enter your access code to start learning
+                today.
+              </p>
+              <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:justify-center">
+                <Link href="/access">
+                  <Button size="lg" className="w-full sm:w-auto">
+                    Enter Access Code
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+                <Link href="/courses">
+                  <Button variant="outline" size="lg" className="w-full sm:w-auto">
+                    Browse Courses
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+          <div className="absolute inset-0 -z-10 bg-[radial-gradient(45rem_50rem_at_top,theme(colors.primary.100),transparent)] opacity-20" />
+        </section>
+
+        {/* Features Section */}
+        <section className="py-20 md:py-28">
+          <div className="container">
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+                Everything You Need to Succeed
+              </h2>
+              <p className="mt-4 text-muted-foreground">
+                Our platform combines multiple learning tools to help you retain
+                information and excel in your studies.
+              </p>
+            </div>
+
+            <div className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+              <Card className="border-2 transition-colors hover:border-primary/50">
+                <CardHeader>
+                  <BookOpen className="h-10 w-10 text-primary" />
+                  <CardTitle className="mt-4">Rich Content</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription className="text-base">
+                    Access comprehensive course materials with text, images, and
+                    embedded videos for every topic.
+                  </CardDescription>
+                </CardContent>
+              </Card>
+
+              <Card className="border-2 transition-colors hover:border-primary/50">
+                <CardHeader>
+                  <Brain className="h-10 w-10 text-primary" />
+                  <CardTitle className="mt-4">Flashcards</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription className="text-base">
+                    Interactive flashcards with smooth flip animations to help you
+                    memorize key concepts effectively.
+                  </CardDescription>
+                </CardContent>
+              </Card>
+
+              <Card className="border-2 transition-colors hover:border-primary/50">
+                <CardHeader>
+                  <ClipboardCheck className="h-10 w-10 text-primary" />
+                  <CardTitle className="mt-4">Practice Tests</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription className="text-base">
+                    Timed tests with multiple question types to prepare you for
+                    exams and track your progress.
+                  </CardDescription>
+                </CardContent>
+              </Card>
+
+              <Card className="border-2 transition-colors hover:border-primary/50">
+                <CardHeader>
+                  <Sparkles className="h-10 w-10 text-primary" />
+                  <CardTitle className="mt-4">Interactive</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription className="text-base">
+                    Engaging interface designed to make learning enjoyable and
+                    keep you motivated throughout.
+                  </CardDescription>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </section>
+
+        {/* CTA Section */}
+        <section className="border-t bg-muted/50 py-20 md:py-28">
+          <div className="container">
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+                Ready to Start Learning?
+              </h2>
+              <p className="mt-4 text-muted-foreground">
+                Enter your access code to unlock your course content and begin
+                your learning journey today.
+              </p>
+              <div className="mt-8">
+                <Link href="/access">
+                  <Button size="lg">
+                    Get Started Now
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
+
+      <Footer />
     </div>
-  );
+  )
 }

@@ -1,0 +1,64 @@
+// Prisma schema for Learning Platform
+// Access code authentication system
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Access codes for course authentication
+model AccessCode {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  courseId    String    // References course in Baserow
+  courseName  String    // Cached course name for display
+  isActive    Boolean   @default(true)
+  usageLimit  Int?      // Optional limit on uses
+  usageCount  Int       @default(0)
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  sessions    Session[]
+
+  @@index([code])
+  @@index([courseId])
+}
+
+// User sessions (cookie-based, no full auth)
+model Session {
+  id           String     @id @default(cuid())
+  accessCodeId String
+  accessCode   AccessCode @relation(fields: [accessCodeId], references: [id])
+  token        String     @unique
+  deviceInfo   String?    // Optional device fingerprint
+  expiresAt    DateTime
+  createdAt    DateTime   @default(now())
+  lastActiveAt DateTime   @default(now())
+
+  @@index([token])
+  @@index([accessCodeId])
+}
+
+// Cached course data from Baserow (for faster queries)
+model CachedCourse {
+  id                String   @id @default(cuid())
+  baserowId         String   @unique // ID in Baserow
+  name              String
+  description       String?
+  thumbnail         String?
+  category          String?
+  isPublished       Boolean  @default(false)
+  lessonsCount      Int      @default(0)
+  flashcardsCount   Int      @default(0)
+  testsCount        Int      @default(0)
+  syncedAt          DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([baserowId])
+  @@index([category])
+}
