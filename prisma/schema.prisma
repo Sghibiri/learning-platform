@@ -24,6 +24,13 @@ model AccessCode {
   updatedAt   DateTime  @updatedAt
   sessions    Session[]
 
+  // Baserow workspace configuration (one workspace per course)
+  baserowApiToken          String?
+  baserowLessonsTableId    String?
+  baserowFlashcardsTableId String?
+  baserowTestsTableId      String?
+  baserowQuestionsTableId  String?
+
   @@index([code])
   @@index([courseId])
 }

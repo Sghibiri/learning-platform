@@ -6,6 +6,15 @@ import bcrypt from 'bcryptjs'
 const SESSION_COOKIE_NAME = 'learning_session'
 const SESSION_EXPIRY_DAYS = parseInt(process.env.SESSION_EXPIRY_DAYS || '7', 10)
 
+// Baserow configuration for a course
+export interface BaserowConfig {
+  apiToken: string
+  lessonsTableId: string
+  flashcardsTableId: string
+  testsTableId: string
+  questionsTableId: string
+}
+
 function generateToken(): string {
   const array = new Uint8Array(32)
   crypto.getRandomValues(array)
@@ -140,4 +149,59 @@ export async function hashCode(code: string): Promise<string> {
 
 export async function verifyCode(code: string, hash: string): Promise<boolean> {
   return bcrypt.compare(code, hash)
+}
+
+// Get Baserow configuration for the current session
+export async function getBaserowConfig(): Promise<{
+  config: BaserowConfig | null
+  courseId: string | null
+  error?: string
+}> {
+  const cookieStore = await cookies()
+  const sessionToken = cookieStore.get(SESSION_COOKIE_NAME)?.value
+
+  if (!sessionToken) {
+    return { config: null, courseId: null, error: 'Not authenticated' }
+  }
+
+  const session = await prisma.session.findUnique({
+    where: { token: sessionToken },
+    include: { accessCode: true },
+  })
+
+  if (!session) {
+    return { config: null, courseId: null, error: 'Session not found' }
+  }
+
+  if (session.expiresAt < new Date()) {
+    return { config: null, courseId: null, error: 'Session expired' }
+  }
+
+  const { accessCode } = session
+
+  // Check if Baserow is configured for this course
+  if (
+    !accessCode.baserowApiToken ||
+    !accessCode.baserowLessonsTableId ||
+    !accessCode.baserowFlashcardsTableId ||
+    !accessCode.baserowTestsTableId ||
+    !accessCode.baserowQuestionsTableId
+  ) {
+    return {
+      config: null,
+      courseId: accessCode.courseId,
+      error: 'Baserow not configured for this course',
+    }
+  }
+
+  return {
+    config: {
+      apiToken: accessCode.baserowApiToken,
+      lessonsTableId: accessCode.baserowLessonsTableId,
+      flashcardsTableId: accessCode.baserowFlashcardsTableId,
+      testsTableId: accessCode.baserowTestsTableId,
+      questionsTableId: accessCode.baserowQuestionsTableId,
+    },
+    courseId: accessCode.courseId,
+  }
 }

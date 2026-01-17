@@ -17,144 +17,66 @@ import {
   ChevronRight,
   FileText,
   Video,
+  AlertCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import type { Lesson as BaseLesson } from '@/types'
 
-interface Lesson {
-  id: string
-  title: string
-  content: string
-  videoUrl: string | null
-  duration: number | null
-  order: number
+interface Lesson extends Omit<BaseLesson, 'courseId'> {
   isCompleted: boolean
 }
-
-// Mock data - will be replaced with API calls
-const mockLessons: Lesson[] = [
-  {
-    id: '1',
-    title: 'Introduction to the Course',
-    content: `
-# Welcome to the Course
-
-This is the introductory lesson where you'll learn the fundamentals of the subject.
-
-## What You'll Learn
-
-- Key concepts and terminology
-- Basic principles and theories
-- Practical applications
-
-## Getting Started
-
-Before we dive in, make sure you have:
-
-1. A notebook for taking notes
-2. Access to the course materials
-3. Time set aside for focused learning
-
-> "The beautiful thing about learning is that no one can take it away from you." - B.B. King
-
-### Key Terms
-
-| Term | Definition |
-|------|------------|
-| Concept A | The foundational principle |
-| Concept B | Building on Concept A |
-| Concept C | Advanced application |
-
-Let's begin your learning journey!
-    `,
-    videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    duration: 15,
-    order: 1,
-    isCompleted: true,
-  },
-  {
-    id: '2',
-    title: 'Core Concepts',
-    content: `
-# Core Concepts
-
-In this lesson, we'll explore the fundamental concepts that form the basis of our subject.
-
-## The Foundation
-
-Understanding these core concepts is essential for mastering the material.
-
-### Concept 1: Basic Principles
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
-
-### Concept 2: Building Blocks
-
-Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-
-## Practice Exercise
-
-Try applying these concepts to a real-world scenario:
-
-\`\`\`javascript
-// Example code snippet
-function demonstrateConcept() {
-  const principle = "understanding";
-  return principle + " leads to mastery";
-}
-\`\`\`
-    `,
-    videoUrl: null,
-    duration: 20,
-    order: 2,
-    isCompleted: false,
-  },
-  {
-    id: '3',
-    title: 'Advanced Topics',
-    content: `
-# Advanced Topics
-
-Now that you understand the basics, let's dive deeper into more advanced material.
-
-## Complex Scenarios
-
-We'll explore how to apply your knowledge in complex, real-world situations.
-
-- Scenario analysis
-- Problem-solving strategies
-- Best practices
-
-## Summary
-
-Key takeaways from this lesson:
-
-1. Build on your foundational knowledge
-2. Practice regularly
-3. Apply concepts to real situations
-    `,
-    videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    duration: 25,
-    order: 3,
-    isCompleted: false,
-  },
-]
 
 export default function ContentPage() {
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('content')
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
 
     async function loadLessons() {
       setIsLoading(true)
-      await new Promise((resolve) => setTimeout(resolve, 500))
-      if (!cancelled) {
-        setLessons(mockLessons)
-        setSelectedLesson(mockLessons[0])
-        setIsLoading(false)
+      setError(null)
+
+      try {
+        // Get session to get courseId
+        const sessionRes = await fetch('/api/auth/session')
+        const sessionData = await sessionRes.json()
+
+        if (!sessionData.authenticated || !sessionData.data?.courseId) {
+          setError('Session not found')
+          setIsLoading(false)
+          return
+        }
+
+        const courseId = sessionData.data.courseId
+
+        // Fetch lessons for this course
+        const lessonsRes = await fetch(`/api/content/lessons?courseId=${courseId}`)
+        const lessonsData = await lessonsRes.json()
+
+        if (!cancelled) {
+          if (lessonsData.success && lessonsData.data) {
+            const lessonsWithCompletion = lessonsData.data.map((lesson: BaseLesson) => ({
+              ...lesson,
+              isCompleted: false, // TODO: Track completion in local storage or backend
+            }))
+            setLessons(lessonsWithCompletion)
+            if (lessonsWithCompletion.length > 0) {
+              setSelectedLesson(lessonsWithCompletion[0])
+            }
+          } else {
+            setError(lessonsData.error || 'Failed to load lessons')
+          }
+          setIsLoading(false)
+        }
+      } catch {
+        if (!cancelled) {
+          setError('Failed to load lessons')
+          setIsLoading(false)
+        }
       }
     }
 
@@ -188,6 +110,42 @@ export default function ContentPage() {
           </div>
           <Skeleton className="h-96" />
         </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="container py-8">
+        <Card className="text-center py-12">
+          <CardContent>
+            <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Unable to Load Lessons</h2>
+            <p className="text-muted-foreground">{error}</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (lessons.length === 0) {
+    return (
+      <div className="container py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+            <BookOpen className="h-8 w-8 text-primary" />
+            Course Content
+          </h1>
+        </div>
+        <Card className="text-center py-12">
+          <CardContent>
+            <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">No Lessons Yet</h2>
+            <p className="text-muted-foreground">
+              Content for this course is coming soon.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     )
   }

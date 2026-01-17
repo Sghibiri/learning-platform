@@ -28,8 +28,10 @@ import {
   RotateCcw,
   ArrowRight,
   Timer,
+  AlertCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import type { Test as BaseTest, Question as BaseQuestion } from '@/types'
 
 interface Question {
   id: string
@@ -41,107 +43,14 @@ interface Question {
 interface Test {
   id: string
   title: string
-  description: string
-  timeLimit: number | null // in minutes
+  description: string | null
+  timeLimit: number | null
   passingScore: number
   questionsCount: number
   questions: Question[]
   bestScore: number | null
   attempts: number
 }
-
-// Mock data
-const mockTests: Test[] = [
-  {
-    id: '1',
-    title: 'Chapter 1 Quiz',
-    description: 'Test your understanding of the introductory concepts',
-    timeLimit: 10,
-    passingScore: 70,
-    questionsCount: 5,
-    questions: [
-      {
-        id: 'q1',
-        text: 'What is the capital of France?',
-        options: [
-          { id: 'a', text: 'London' },
-          { id: 'b', text: 'Paris' },
-          { id: 'c', text: 'Berlin' },
-          { id: 'd', text: 'Madrid' },
-        ],
-        correctAnswer: 'b',
-      },
-      {
-        id: 'q2',
-        text: 'Which planet is known as the Red Planet?',
-        options: [
-          { id: 'a', text: 'Venus' },
-          { id: 'b', text: 'Jupiter' },
-          { id: 'c', text: 'Mars' },
-          { id: 'd', text: 'Saturn' },
-        ],
-        correctAnswer: 'c',
-      },
-      {
-        id: 'q3',
-        text: 'What is the chemical symbol for gold?',
-        options: [
-          { id: 'a', text: 'Go' },
-          { id: 'b', text: 'Gd' },
-          { id: 'c', text: 'Au' },
-          { id: 'd', text: 'Ag' },
-        ],
-        correctAnswer: 'c',
-      },
-      {
-        id: 'q4',
-        text: 'Who wrote "1984"?',
-        options: [
-          { id: 'a', text: 'Aldous Huxley' },
-          { id: 'b', text: 'George Orwell' },
-          { id: 'c', text: 'Ray Bradbury' },
-          { id: 'd', text: 'H.G. Wells' },
-        ],
-        correctAnswer: 'b',
-      },
-      {
-        id: 'q5',
-        text: 'What is the largest ocean on Earth?',
-        options: [
-          { id: 'a', text: 'Atlantic Ocean' },
-          { id: 'b', text: 'Indian Ocean' },
-          { id: 'c', text: 'Arctic Ocean' },
-          { id: 'd', text: 'Pacific Ocean' },
-        ],
-        correctAnswer: 'd',
-      },
-    ],
-    bestScore: 80,
-    attempts: 2,
-  },
-  {
-    id: '2',
-    title: 'Midterm Exam',
-    description: 'Comprehensive test covering chapters 1-5',
-    timeLimit: 30,
-    passingScore: 65,
-    questionsCount: 10,
-    questions: [],
-    bestScore: null,
-    attempts: 0,
-  },
-  {
-    id: '3',
-    title: 'Final Assessment',
-    description: 'Final test covering all course material',
-    timeLimit: 45,
-    passingScore: 70,
-    questionsCount: 20,
-    questions: [],
-    bestScore: null,
-    attempts: 0,
-  },
-]
 
 type TestState = 'list' | 'taking' | 'results'
 
@@ -164,25 +73,93 @@ export default function TestsPage() {
   const [testResult, setTestResult] = useState<TestResult | null>(null)
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false)
   const [showTimeWarning, setShowTimeWarning] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [isLoadingQuestions, setIsLoadingQuestions] = useState(false)
 
   const loadTests = useCallback(async () => {
     setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 500))
-    setTests(mockTests)
-    setIsLoading(false)
+    setError(null)
+
+    try {
+      // Get session to get courseId
+      const sessionRes = await fetch('/api/auth/session')
+      const sessionData = await sessionRes.json()
+
+      if (!sessionData.authenticated || !sessionData.data?.courseId) {
+        setError('Session not found')
+        setIsLoading(false)
+        return
+      }
+
+      const courseId = sessionData.data.courseId
+
+      // Fetch tests for this course
+      const testsRes = await fetch(`/api/content/tests?courseId=${courseId}`)
+      const testsData = await testsRes.json()
+
+      if (testsData.success && testsData.data) {
+        const testsWithDefaults = testsData.data.map((test: BaseTest) => ({
+          id: test.id,
+          title: test.title,
+          description: test.description,
+          timeLimit: test.timeLimit,
+          passingScore: test.passingScore,
+          questionsCount: 0, // Will be fetched when starting
+          questions: [],
+          bestScore: null, // TODO: Track in local storage or backend
+          attempts: 0,
+        }))
+        setTests(testsWithDefaults)
+      } else {
+        setError(testsData.error || 'Failed to load tests')
+      }
+    } catch {
+      setError('Failed to load tests')
+    } finally {
+      setIsLoading(false)
+    }
   }, [])
 
   useEffect(() => {
     loadTests()
   }, [loadTests])
 
-  const startTest = (test: Test) => {
-    setSelectedTest(test)
-    setAnswers({})
-    setCurrentQuestion(0)
-    setTimeRemaining(test.timeLimit ? test.timeLimit * 60 : null)
-    setTestState('taking')
-    setShowTimeWarning(false)
+  const startTest = async (test: Test) => {
+    setIsLoadingQuestions(true)
+
+    try {
+      // Fetch questions for this test
+      const questionsRes = await fetch(`/api/content/questions?testId=${test.id}`)
+      const questionsData = await questionsRes.json()
+
+      if (questionsData.success && questionsData.data) {
+        const questions: Question[] = questionsData.data.map((q: BaseQuestion) => ({
+          id: q.id,
+          text: q.text,
+          options: q.options.map(opt => ({ id: opt.id, text: opt.text })),
+          correctAnswer: q.correctAnswer,
+        }))
+
+        const testWithQuestions = {
+          ...test,
+          questions,
+          questionsCount: questions.length,
+        }
+
+        setSelectedTest(testWithQuestions)
+        setAnswers({})
+        setCurrentQuestion(0)
+        setTimeRemaining(test.timeLimit ? test.timeLimit * 60 : null)
+        setTestState('taking')
+        setShowTimeWarning(false)
+      } else {
+        setError('Failed to load questions')
+      }
+    } catch {
+      setError('Failed to load questions')
+    } finally {
+      setIsLoadingQuestions(false)
+    }
   }
 
   const submitTest = useCallback(() => {
@@ -279,8 +256,44 @@ export default function TestsPage() {
     )
   }
 
+  if (error && testState === 'list') {
+    return (
+      <div className="container py-8">
+        <Card className="text-center py-12">
+          <CardContent>
+            <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <CardTitle className="mb-2">Unable to Load Tests</CardTitle>
+            <p className="text-muted-foreground">{error}</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   // Test List View
   if (testState === 'list') {
+    if (tests.length === 0) {
+      return (
+        <div className="container py-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+              <ClipboardCheck className="h-8 w-8 text-primary" />
+              Practice Tests
+            </h1>
+          </div>
+          <Card className="text-center py-12">
+            <CardContent>
+              <ClipboardCheck className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <CardTitle className="mb-2">No Tests Yet</CardTitle>
+              <p className="text-muted-foreground">
+                Tests for this course are coming soon.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )
+    }
+
     return (
       <div className="container py-8">
         <div className="mb-8">
@@ -345,16 +358,20 @@ export default function TestsPage() {
                   <Button
                     className="w-full mt-4"
                     onClick={() => startTest(test)}
-                    disabled={test.questions.length === 0}
+                    disabled={isLoadingQuestions}
                   >
-                    <PlayCircle className="mr-2 h-4 w-4" />
-                    {test.attempts > 0 ? 'Retake Test' : 'Start Test'}
+                    {isLoadingQuestions ? (
+                      <>
+                        <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        <PlayCircle className="mr-2 h-4 w-4" />
+                        {test.attempts > 0 ? 'Retake Test' : 'Start Test'}
+                      </>
+                    )}
                   </Button>
-                  {test.questions.length === 0 && (
-                    <p className="text-xs text-muted-foreground text-center">
-                      Coming soon
-                    </p>
-                  )}
                 </div>
               </CardContent>
             </Card>

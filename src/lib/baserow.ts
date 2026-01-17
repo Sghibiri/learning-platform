@@ -1,7 +1,6 @@
 import type { BaserowListResponse, BaserowRow } from '@/types'
 
 const BASEROW_API_URL = process.env.BASEROW_API_URL || 'https://api.baserow.io'
-const BASEROW_API_TOKEN = process.env.BASEROW_API_TOKEN || ''
 
 interface BaserowOptions {
   page?: number
@@ -11,13 +10,13 @@ interface BaserowOptions {
   filters?: Record<string, string>
 }
 
-class BaserowClient {
+export class BaserowClient {
   private baseUrl: string
   private token: string
 
-  constructor() {
+  constructor(token: string) {
     this.baseUrl = BASEROW_API_URL
-    this.token = BASEROW_API_TOKEN
+    this.token = token
   }
 
   private async request<T>(
@@ -124,4 +123,7 @@ class BaserowClient {
   }
 }
 
-export const baserow = new BaserowClient()
+// Helper function to create a Baserow client with dynamic credentials
+export function createBaserowClient(token: string): BaserowClient {
+  return new BaserowClient(token)
+}

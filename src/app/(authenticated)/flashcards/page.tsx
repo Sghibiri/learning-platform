@@ -16,7 +16,9 @@ import {
   Brain,
   CheckCircle2,
   XCircle,
+  AlertCircle,
 } from 'lucide-react'
+import type { Flashcard as BaseFlashcard } from '@/types'
 
 interface Flashcard {
   id: string
@@ -25,46 +27,6 @@ interface Flashcard {
   category: string | null
 }
 
-// Mock data - will be replaced with API calls
-const mockFlashcards: Flashcard[] = [
-  {
-    id: '1',
-    front: 'What is the capital of France?',
-    back: 'Paris',
-    category: 'Geography',
-  },
-  {
-    id: '2',
-    front: 'What is the chemical symbol for water?',
-    back: 'H₂O',
-    category: 'Chemistry',
-  },
-  {
-    id: '3',
-    front: 'Who wrote "Romeo and Juliet"?',
-    back: 'William Shakespeare',
-    category: 'Literature',
-  },
-  {
-    id: '4',
-    front: 'What is the powerhouse of the cell?',
-    back: 'Mitochondria',
-    category: 'Biology',
-  },
-  {
-    id: '5',
-    front: 'What year did World War II end?',
-    back: '1945',
-    category: 'History',
-  },
-  {
-    id: '6',
-    front: 'What is the speed of light?',
-    back: '299,792,458 meters per second',
-    category: 'Physics',
-  },
-]
-
 export default function FlashcardsPage() {
   const [flashcards, setFlashcards] = useState<Flashcard[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -72,16 +34,51 @@ export default function FlashcardsPage() {
   const [knownCards, setKnownCards] = useState<Set<string>>(new Set())
   const [unknownCards, setUnknownCards] = useState<Set<string>>(new Set())
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
 
     async function loadFlashcards() {
       setIsLoading(true)
-      await new Promise((resolve) => setTimeout(resolve, 500))
-      if (!cancelled) {
-        setFlashcards(mockFlashcards)
-        setIsLoading(false)
+      setError(null)
+
+      try {
+        // Get session to get courseId
+        const sessionRes = await fetch('/api/auth/session')
+        const sessionData = await sessionRes.json()
+
+        if (!sessionData.authenticated || !sessionData.data?.courseId) {
+          setError('Session not found')
+          setIsLoading(false)
+          return
+        }
+
+        const courseId = sessionData.data.courseId
+
+        // Fetch flashcards for this course
+        const flashcardsRes = await fetch(`/api/content/flashcards?courseId=${courseId}`)
+        const flashcardsData = await flashcardsRes.json()
+
+        if (!cancelled) {
+          if (flashcardsData.success && flashcardsData.data) {
+            const cards = flashcardsData.data.map((card: BaseFlashcard) => ({
+              id: card.id,
+              front: card.front,
+              back: card.back,
+              category: card.category,
+            }))
+            setFlashcards(cards)
+          } else {
+            setError(flashcardsData.error || 'Failed to load flashcards')
+          }
+          setIsLoading(false)
+        }
+      } catch {
+        if (!cancelled) {
+          setError('Failed to load flashcards')
+          setIsLoading(false)
+        }
       }
     }
 
@@ -182,6 +179,42 @@ export default function FlashcardsPage() {
             <Skeleton className="h-64 w-full max-w-lg" />
           </div>
         </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="container py-8">
+        <Card className="text-center py-12">
+          <CardContent>
+            <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <CardTitle className="mb-2">Unable to Load Flashcards</CardTitle>
+            <p className="text-muted-foreground">{error}</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (flashcards.length === 0) {
+    return (
+      <div className="container py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+            <Brain className="h-8 w-8 text-primary" />
+            Flashcards
+          </h1>
+        </div>
+        <Card className="text-center py-12">
+          <CardContent>
+            <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <CardTitle className="mb-2">No Flashcards Yet</CardTitle>
+            <p className="text-muted-foreground">
+              Flashcards for this course are coming soon.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     )
   }
