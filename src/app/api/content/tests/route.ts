@@ -1,18 +1,17 @@
 import { NextResponse } from 'next/server'
 import { createBaserowClient } from '@/lib/baserow'
 import { getBaserowConfig } from '@/lib/session'
-import type { BaserowTestRow, Test } from '@/types'
+import type { BaserowTestRow, TestConfig } from '@/types'
 
-function transformTest(row: BaserowTestRow, courseId: string): Omit<Test, 'questions'> & { questions: [] } {
+function transformTestConfig(row: BaserowTestRow, courseId: string): TestConfig {
   return {
     id: row.id.toString(),
     courseId,
-    lessonId: null,
     title: row.title,
     description: row.description,
     timeLimit: row.timeLimit,
     passingScore: row.passingScore,
-    questions: [],
+    questionsPerCategory: row.questionsPerCategory || 5, // default to 5 if not set
   }
 }
 
@@ -28,11 +27,9 @@ export async function GET() {
     }
 
     const baserow = createBaserowClient(config.apiToken)
-    const rows = await baserow.getAllRows<BaserowTestRow>(config.testsTableId, {
-      orderBy: 'orderr',
-    })
+    const rows = await baserow.getAllRows<BaserowTestRow>(config.testsTableId)
 
-    const tests = rows.map(row => transformTest(row, courseId))
+    const tests = rows.map(row => transformTestConfig(row, courseId))
 
     return NextResponse.json({
       success: true,

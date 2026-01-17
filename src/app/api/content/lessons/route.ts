@@ -10,7 +10,7 @@ function transformLesson(row: BaserowLessonRow, courseId: string): Lesson {
     title: row.title,
     content: row.content,
     videoUrl: row.videoUrl,
-    order: parseInt(row.orderr) || 0,
+    order: row.id, // Use Baserow row ID for ordering
     duration: row.duration,
   }
 }
@@ -27,9 +27,7 @@ export async function GET() {
     }
 
     const baserow = createBaserowClient(config.apiToken)
-    const rows = await baserow.getAllRows<BaserowLessonRow>(config.lessonsTableId, {
-      orderBy: 'orderr',
-    })
+    const rows = await baserow.getAllRows<BaserowLessonRow>(config.lessonsTableId)
 
     const lessons = rows.map(row => transformLesson(row, courseId))
 

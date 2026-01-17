@@ -33,26 +33,29 @@ export interface Flashcard {
   order: number
 }
 
-export interface Test {
+export interface TestConfig {
   id: string
   courseId: string
-  lessonId: string | null
   title: string
   description: string | null
   timeLimit: number | null // in minutes
   passingScore: number // percentage
+  questionsPerCategory: number // number of random questions to pick per category
+}
+
+export interface GeneratedTest extends TestConfig {
   questions: Question[]
+  categories: string[] // list of categories included in this test
 }
 
 export interface Question {
   id: string
-  testId: string
+  category: string
   text: string
   type: 'multiple_choice' | 'true_false' | 'short_answer'
   options: QuestionOption[]
   correctAnswer: string
   explanation: string | null
-  order: number
 }
 
 export interface QuestionOption {
@@ -95,7 +98,6 @@ export interface ApiResponse<T> {
 // Baserow API types
 export interface BaserowRow {
   id: number
-  orderr: string  // Named "orderr" because "order" is reserved in Baserow
   [key: string]: unknown
 }
 
@@ -127,10 +129,11 @@ export interface BaserowTestRow extends BaserowRow {
   description: string | null
   timeLimit: number | null
   passingScore: number
+  questionsPerCategory: number
 }
 
 export interface BaserowQuestionRow extends BaserowRow {
-  testId: number
+  category: string
   question: string
   optionA: string
   optionB: string

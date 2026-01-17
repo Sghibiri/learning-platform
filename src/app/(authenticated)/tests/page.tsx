@@ -31,7 +31,7 @@ import {
   AlertCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { Test as BaseTest, Question as BaseQuestion } from '@/types'
+import type { TestConfig, GeneratedTest as BaseGeneratedTest, Question as BaseQuestion } from '@/types'
 
 interface Question {
   id: string
@@ -98,13 +98,13 @@ export default function TestsPage() {
       const testsData = await testsRes.json()
 
       if (testsData.success && testsData.data) {
-        const testsWithDefaults = testsData.data.map((test: BaseTest) => ({
+        const testsWithDefaults = testsData.data.map((test: TestConfig) => ({
           id: test.id,
           title: test.title,
           description: test.description,
           timeLimit: test.timeLimit,
           passingScore: test.passingScore,
-          questionsCount: 0, // Will be fetched when starting
+          questionsCount: 0, // Will be determined when test is generated
           questions: [],
           bestScore: null, // TODO: Track in local storage or backend
           attempts: 0,
@@ -128,12 +128,13 @@ export default function TestsPage() {
     setIsLoadingQuestions(true)
 
     try {
-      // Fetch questions for this test
-      const questionsRes = await fetch(`/api/content/questions?testId=${test.id}`)
-      const questionsData = await questionsRes.json()
+      // Generate a new test with random questions
+      const generateRes = await fetch(`/api/content/tests/${test.id}/generate`)
+      const generateData = await generateRes.json()
 
-      if (questionsData.success && questionsData.data) {
-        const questions: Question[] = questionsData.data.map((q: BaseQuestion) => ({
+      if (generateData.success && generateData.data) {
+        const generatedTest: BaseGeneratedTest = generateData.data
+        const questions: Question[] = generatedTest.questions.map((q: BaseQuestion) => ({
           id: q.id,
           text: q.text,
           options: q.options.map(opt => ({ id: opt.id, text: opt.text })),
@@ -144,19 +145,21 @@ export default function TestsPage() {
           ...test,
           questions,
           questionsCount: questions.length,
+          timeLimit: generatedTest.timeLimit,
+          passingScore: generatedTest.passingScore,
         }
 
         setSelectedTest(testWithQuestions)
         setAnswers({})
         setCurrentQuestion(0)
-        setTimeRemaining(test.timeLimit ? test.timeLimit * 60 : null)
+        setTimeRemaining(generatedTest.timeLimit ? generatedTest.timeLimit * 60 : null)
         setTestState('taking')
         setShowTimeWarning(false)
       } else {
-        setError('Failed to load questions')
+        setError(generateData.error || 'Failed to generate test')
       }
     } catch {
-      setError('Failed to load questions')
+      setError('Failed to generate test')
     } finally {
       setIsLoadingQuestions(false)
     }

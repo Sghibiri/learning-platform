@@ -11,7 +11,7 @@ function transformFlashcard(row: BaserowFlashcardRow, courseId: string): Flashca
     front: row.front,
     back: row.back,
     category: row.category,
-    order: parseInt(row.orderr) || 0,
+    order: row.id, // Use Baserow row ID for ordering
   }
 }
 
@@ -27,9 +27,7 @@ export async function GET() {
     }
 
     const baserow = createBaserowClient(config.apiToken)
-    const rows = await baserow.getAllRows<BaserowFlashcardRow>(config.flashcardsTableId, {
-      orderBy: 'orderr',
-    })
+    const rows = await baserow.getAllRows<BaserowFlashcardRow>(config.flashcardsTableId)
 
     const flashcards = rows.map(row => transformFlashcard(row, courseId))
 

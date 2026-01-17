@@ -9,7 +9,7 @@ function transformQuestion(row: BaserowQuestionRow): Question {
 
   return {
     id: row.id.toString(),
-    testId: row.testId.toString(),
+    category: row.category,
     text: row.question,
     type: 'multiple_choice',
     options: [
@@ -20,21 +20,13 @@ function transformQuestion(row: BaserowQuestionRow): Question {
     ],
     correctAnswer: row.correctAnswer.toLowerCase(),
     explanation: null,
-    order: parseInt(row.orderr) || 0,
   }
 }
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
-    const testId = searchParams.get('testId')
-
-    if (!testId) {
-      return NextResponse.json(
-        { success: false, error: 'testId parameter is required' },
-        { status: 400 }
-      )
-    }
+    const category = searchParams.get('category')
 
     const { config, error } = await getBaserowConfig()
 
@@ -46,20 +38,28 @@ export async function GET(request: NextRequest) {
     }
 
     const baserow = createBaserowClient(config.apiToken)
-    const filters: Record<string, string> = {
-      'filter__testId__equal': testId,
-    }
+
+    // Build filters if category is specified
+    const filters: Record<string, string> | undefined = category
+      ? { 'filter__category__equal': category }
+      : undefined
 
     const rows = await baserow.getAllRows<BaserowQuestionRow>(config.questionsTableId, {
       filters,
-      orderBy: 'orderr',
     })
 
     const questions = rows.map(transformQuestion)
 
+    // Group by category for the response
+    const categories = [...new Set(questions.map(q => q.category))]
+
     return NextResponse.json({
       success: true,
       data: questions,
+      meta: {
+        total: questions.length,
+        categories,
+      },
     })
   } catch (error) {
     console.error('Error fetching questions:', error)
