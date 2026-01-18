@@ -43,26 +43,46 @@ export default function DashboardPage() {
 
   const loadDashboardData = async () => {
     try {
-      // Get session data
-      const sessionRes = await fetch('/api/auth/session')
-      const sessionData = await sessionRes.json()
+      // Fetch session and content counts in parallel
+      const [sessionRes, lessonsRes, flashcardsRes, testsRes] = await Promise.all([
+        fetch('/api/auth/session'),
+        fetch('/api/content/lessons'),
+        fetch('/api/content/flashcards'),
+        fetch('/api/content/tests'),
+      ])
 
+      const sessionData = await sessionRes.json()
       if (sessionData.authenticated) {
         setSession(sessionData.data)
       }
 
-      // For now, use mock stats - will be replaced with real API calls
+      // Get real counts from APIs
+      const lessonsData = await lessonsRes.json()
+      const flashcardsData = await flashcardsRes.json()
+      const testsData = await testsRes.json()
+
+      // Set real totals, but progress starts at 0 (fresh each session)
       setStats({
-        lessonsTotal: 12,
-        lessonsCompleted: 4,
-        flashcardsTotal: 48,
-        flashcardsStudied: 24,
-        testsTotal: 6,
-        testsCompleted: 2,
-        averageScore: 78,
+        lessonsTotal: Array.isArray(lessonsData) ? lessonsData.length : 0,
+        lessonsCompleted: 0,
+        flashcardsTotal: Array.isArray(flashcardsData) ? flashcardsData.length : 0,
+        flashcardsStudied: 0,
+        testsTotal: Array.isArray(testsData) ? testsData.length : 0,
+        testsCompleted: 0,
+        averageScore: 0,
       })
     } catch (error) {
       console.error('Error loading dashboard:', error)
+      // Set defaults on error
+      setStats({
+        lessonsTotal: 0,
+        lessonsCompleted: 0,
+        flashcardsTotal: 0,
+        flashcardsStudied: 0,
+        testsTotal: 0,
+        testsCompleted: 0,
+        averageScore: 0,
+      })
     } finally {
       setIsLoading(false)
     }
@@ -99,10 +119,10 @@ export default function DashboardPage() {
       {/* Welcome Section */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">
-          Welcome back!
+          Welcome!
         </h1>
         <p className="text-muted-foreground mt-1">
-          Continue your learning journey in{' '}
+          Start your learning journey in{' '}
           <span className="font-medium text-foreground">
             {session?.courseName || 'your course'}
           </span>
@@ -159,19 +179,21 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-2 bg-primary/10 rounded-full">
-                <Trophy className="h-5 w-5 text-primary" />
+        {stats && stats.testsCompleted > 0 && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="p-2 bg-primary/10 rounded-full">
+                  <Trophy className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{stats.averageScore}%</p>
+                  <p className="text-sm text-muted-foreground">Avg. Score</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold">{stats?.averageScore}%</p>
-                <p className="text-sm text-muted-foreground">Avg. Score</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Main Content Cards */}
@@ -206,7 +228,7 @@ export default function DashboardPage() {
             <Link href="/content">
               <Button className="w-full">
                 <PlayCircle className="mr-2 h-4 w-4" />
-                Continue Learning
+                Start Learning
               </Button>
             </Link>
           </CardContent>
